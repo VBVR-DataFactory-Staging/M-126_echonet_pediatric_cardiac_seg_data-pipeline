@@ -24,14 +24,21 @@ PROMPT = ("This is a pediatric echocardiogram (A4C or PSAX view). "
 def load_tracings(csv_path: Path):
     """Return {video_name: {frame_idx: [(x1,y1,x2,y2), ...]}}."""
     traces = defaultdict(lambda: defaultdict(list))
+    skipped = 0
     with open(csv_path) as f:
         reader = csv.DictReader(f)
         for row in reader:
             vid = row.get("FileName") or row.get("VideoName") or ""
-            frame = int(float(row.get("Frame", 0)))
-            x1, y1 = float(row.get("X1", 0)), float(row.get("Y1", 0))
-            x2, y2 = float(row.get("X2", 0)), float(row.get("Y2", 0))
+            try:
+                frame = int(float(row.get("Frame", 0)))
+                x1, y1 = float(row.get("X1", 0)), float(row.get("Y1", 0))
+                x2, y2 = float(row.get("X2", 0)), float(row.get("Y2", 0))
+            except (ValueError, TypeError):
+                skipped += 1
+                continue
             traces[vid][frame].append((x1, y1, x2, y2))
+    if skipped:
+        print(f"  [load_tracings] skipped {skipped} rows with non-numeric Frame/coords in {csv_path.name}")
     return traces
 
 def trace_to_mask(lines, shape):
